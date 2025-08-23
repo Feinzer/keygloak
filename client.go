@@ -231,13 +231,19 @@ func (client *KClient) CreateUser(opts *KUserOpts, password string) (*KUser, err
 	return user, nil
 }
 
-// Retrieves a token for the following username with password and optional totp
-func (client *KClient) SignInWithPassword(username string, password string, totp *string) (*KAccessToken, error) {
+type KSignInOpts struct {
+	Username string
+	Password string
+	Totp     *string
+}
+
+// Retrieves a token for the user with the provided username, password and optional totp
+func (client *KClient) SignInWithPassword(opts *KSignInOpts) (*KAccessToken, error) {
 	token, err := client.GetOpenIDToken(&KTokenOpts{
 		GrantType: "password",
-		Username:  &username,
-		Password:  &password,
-		Totp:      totp,
+		Username:  &opts.Username,
+		Password:  &opts.Password,
+		Totp:      opts.Totp,
 	})
 	if err != nil {
 		return nil, err
