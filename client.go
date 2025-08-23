@@ -131,7 +131,7 @@ func (client *KClient) GetOpenIDToken(opts *KTokenOpts) (*KAccessToken, error) {
 	if err != nil {
 		return nil, err
 	}
-	if res.StatusCode != 200 {
+	if res.StatusCode >= 400 {
 		return nil, fmt.Errorf("could not get token")
 	}
 
@@ -162,6 +162,10 @@ func (client *KClient) Authenticate(clientId string, clientSecret string) error 
 	client.Access = token
 
 	return nil
+}
+
+type KUserError struct {
+	Message string `json:"errorMessage"`
 }
 
 type KUserCredential struct {
@@ -219,6 +223,17 @@ func (client *KClient) CreateUser(opts *KUserOpts, password string) (*KUser, err
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
+	}
+
+	if res.StatusCode >= 400 {
+		data, err := io.ReadAll(res.Body)
+		if err != nil {
+			return nil, fmt.Errorf("could not create user")
+		}
+
+		var userError KUserError
+		json.Unmarshal(data, &userError)
+		return nil, fmt.Errorf(userError.Message)
 	}
 
 	location, err := url.Parse(res.Header.Get("Location"))
@@ -281,7 +296,7 @@ func (client *KClient) IntrospectToken(token string) (*KIntrospectionResponse, b
 		return nil, false
 	}
 
-	if res.StatusCode != 200 {
+	if res.StatusCode >= 400 {
 		return nil, false
 	}
 
@@ -357,7 +372,7 @@ func (client *KClient) InvalidateToken(opts *KInvalidateOpts) error {
 		return err
 	}
 
-	if res.StatusCode != 200 {
+	if res.StatusCode >= 400 {
 		return fmt.Errorf("could not log out")
 	}
 
