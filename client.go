@@ -177,6 +177,7 @@ type KUserCredential struct {
 type KUserOpts struct {
 	Email     string  `json:"email"`
 	Username  string  `json:"username"`
+	Password  string  `json:"password"`
 	FirstName *string `json:"firstName"`
 	LastName  *string `json:"lastName"`
 }
@@ -184,21 +185,31 @@ type KUserOpts struct {
 type KUser struct {
 	ID          string             `json:"id"`
 	Enabled     bool               `json:"enabled"`
+	Email       string             `json:"email"`
+	Username    string             `json:"username"`
+	FirstName   *string            `json:"firstName"`
+	LastName    *string            `json:"lastName"`
 	Credentials []*KUserCredential `json:"credentials"`
-	*KUserOpts
 }
 
 // Creates a new user inside the realm your set in your instance config.
 //
 // Client has to be previously authenticated using the Authenticate() method*
-func (client *KClient) CreateUser(opts *KUserOpts, password string) (*KUser, error) {
+func (client *KClient) CreateUser(opts *KUserOpts) (*KUser, error) {
+	if opts.Password == "" {
+		return nil, fmt.Errorf("invalid password")
+	}
+
 	user := &KUser{
-		KUserOpts: opts,
 		Enabled:   true,
+		Email:     opts.Email,
+		Username:  opts.Username,
+		FirstName: opts.FirstName,
+		LastName:  opts.LastName,
 		Credentials: []*KUserCredential{
 			{
 				Type:      "password",
-				Value:     password,
+				Value:     opts.Password,
 				Temporary: false,
 			},
 		},
