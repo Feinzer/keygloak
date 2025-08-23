@@ -293,6 +293,8 @@ type KIntrospectionResponse struct {
 	Active    bool   `json:"active"`
 	TokenType string `json:"token_type"`
 	Scope     string `json:"scope"`
+	Email     string `json:"email"`
+	Username  string `json:"username"`
 }
 
 // Executes a token introspection
@@ -331,6 +333,48 @@ func (client *KClient) IntrospectToken(token string) (*KIntrospectionResponse, b
 	json.Unmarshal(data, &response)
 
 	return &response, response.Active
+}
+
+type KUserInfo struct {
+	ID            string  `json:"sub"`
+	Email         string  `json:"email"`
+	EmailVerified bool    `json:"email_verified"`
+	Username      string  `json:"preferred_username"`
+	FullName      string  `json:"name"`
+	FirstName     *string `json:"given_name"`
+	LastName      *string `json:"family_name"`
+}
+
+// Retrieves user's info using the provided token
+func (client *KClient) UserInfo(token string) (*KUserInfo, bool) {
+	req, err := http.NewRequest(
+		http.MethodGet,
+		fmt.Sprintf("%s/%s", client.BaseURL, "protocol/openid-connect/userinfo"),
+		nil,
+	)
+	if err != nil {
+		return nil, false
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, false
+	}
+
+	if res.StatusCode >= 400 {
+		return nil, false
+	}
+
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, false
+	}
+
+	var response KUserInfo
+	json.Unmarshal(data, &response)
+
+	return &response, true
 }
 
 type KValidateOpts struct {
