@@ -81,6 +81,10 @@ func New(ctx context.Context, config *KConfig) *KClient {
 	}
 }
 
+type KTokenError struct {
+	Message string `json:"error_description"`
+}
+
 type KTokenOpts struct {
 	GrantType    string
 	ClientID     string
@@ -132,7 +136,14 @@ func (client *KClient) GetOpenIDToken(opts *KTokenOpts) (*KAccessToken, error) {
 		return nil, err
 	}
 	if res.StatusCode >= 400 {
-		return nil, fmt.Errorf("could not get token")
+		data, err := io.ReadAll(res.Body)
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve token")
+		}
+
+		var tokenError KTokenError
+		json.Unmarshal(data, &tokenError)
+		return nil, fmt.Errorf(tokenError.Message)
 	}
 
 	data, err := io.ReadAll(res.Body)
@@ -384,7 +395,7 @@ func (client *KClient) InvalidateToken(opts *KInvalidateOpts) error {
 	}
 
 	if res.StatusCode >= 400 {
-		return fmt.Errorf("could not log out")
+		return fmt.Errorf("could not invalidate token")
 	}
 
 	return nil
