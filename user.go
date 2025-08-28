@@ -24,8 +24,8 @@ type KUserOpts struct {
 	Email     string `json:"email"`
 	Username  string `json:"username"`
 	Password  string `json:"password"`
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
+	FirstName *string `json:"firstName"`
+	LastName  *string `json:"lastName"`
 }
 
 type KUser struct {
@@ -33,8 +33,8 @@ type KUser struct {
 	Enabled     bool              `json:"enabled"`
 	Email       string            `json:"email"`
 	Username    string            `json:"username"`
-	FirstName   string            `json:"firstName"`
-	LastName    string            `json:"lastName"`
+	FirstName   *string            `json:"firstName"`
+	LastName    *string            `json:"lastName"`
 	Credentials []KUserCredential `json:"credentials"`
 }
 
