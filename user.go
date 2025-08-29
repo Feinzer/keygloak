@@ -21,9 +21,9 @@ type KUserCredential struct {
 }
 
 type KUserOpts struct {
-	Email     string `json:"email"`
-	Username  string `json:"username"`
-	Password  string `json:"password"`
+	Email     string  `json:"email"`
+	Username  string  `json:"username"`
+	Password  string  `json:"password"`
 	FirstName *string `json:"firstName"`
 	LastName  *string `json:"lastName"`
 }
@@ -33,8 +33,8 @@ type KUser struct {
 	Enabled     bool              `json:"enabled"`
 	Email       string            `json:"email"`
 	Username    string            `json:"username"`
-	FirstName   *string            `json:"firstName"`
-	LastName    *string            `json:"lastName"`
+	FirstName   *string           `json:"firstName"`
+	LastName    *string           `json:"lastName"`
 	Credentials []KUserCredential `json:"credentials"`
 }
 
@@ -44,6 +44,17 @@ type KUser struct {
 func (client *KClient) CreateUser(opts *KUserOpts) (*KUser, error) {
 	if opts.Password == "" {
 		return nil, fmt.Errorf("invalid password")
+	}
+
+	if client.ClientToken == nil {
+		return nil, fmt.Errorf("client has not been authenticated")
+	}
+
+	if _, ok := client.IntrospectToken(client.ClientToken.Access); !ok {
+		err := client.Authenticate(client.ClientID, client.ClientSecret)
+		if err != nil {
+			return nil, fmt.Errorf("client could not be re-authenticated")
+		}
 	}
 
 	user := &KUser{
@@ -106,7 +117,7 @@ func (client *KClient) CreateUser(opts *KUserOpts) (*KUser, error) {
 type KSignInOpts struct {
 	Username string
 	Password string
-	Totp     string
+	Totp     *string
 }
 
 // Retrieves a token for the user with the provided username, password and optional totp
@@ -114,8 +125,8 @@ func (client *KClient) SignInWithPassword(opts *KSignInOpts) (*KToken, error) {
 	token, err := client.GetOpenIDToken(
 		KGrantTypePassword,
 		&KTokenOpts{
-			Username: opts.Username,
-			Password: opts.Password,
+			Username: &opts.Username,
+			Password: &opts.Password,
 			Totp:     opts.Totp,
 		},
 	)
@@ -127,13 +138,13 @@ func (client *KClient) SignInWithPassword(opts *KSignInOpts) (*KToken, error) {
 }
 
 type KUserInfo struct {
-	ID            string `json:"sub"`
-	Email         string `json:"email"`
-	EmailVerified bool   `json:"email_verified"`
-	Username      string `json:"preferred_username"`
-	FullName      string `json:"name"`
-	FirstName     string `json:"given_name"`
-	LastName      string `json:"family_name"`
+	ID            string  `json:"sub"`
+	Email         string  `json:"email"`
+	EmailVerified bool    `json:"email_verified"`
+	Username      string  `json:"preferred_username"`
+	FullName      *string `json:"name"`
+	FirstName     *string `json:"given_name"`
+	LastName      *string `json:"family_name"`
 }
 
 // Retrieves user's info using the provided token

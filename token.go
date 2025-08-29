@@ -26,7 +26,7 @@ func (t KGrantType) string() string {
 type KToken struct {
 	Type    string `json:"token_type"`
 	Access  string `json:"access_token"`
-	Refresh string `json:"refresh_token"`
+	Refresh *string `json:"refresh_token"`
 	Scope   string `json:"scope"`
 }
 
@@ -38,10 +38,10 @@ type KTokenOpts struct {
 	ClientID     string
 	ClientSecret string
 	Scope        string
-	RefreshToken string
-	Username     string
-	Password     string
-	Totp         string
+	RefreshToken *string
+	Username     *string
+	Password     *string
+	Totp         *string
 }
 
 // Retrieves a new JWT token from Keycloak using KTokenOptions
@@ -58,16 +58,16 @@ func (client *KClient) GetOpenIDToken(grantType KGrantType, opts *KTokenOpts) (*
 	body.Add("client_secret", clientSecret)
 	body.Add("scope", scope)
 
-	if grantType == KGrantTypeRefresh && opts.RefreshToken != "" {
-		body.Add("refresh_token", opts.RefreshToken)
+	if grantType == KGrantTypeRefresh && opts.RefreshToken != nil {
+		body.Add("refresh_token", *opts.RefreshToken)
 	}
 	if grantType == KGrantTypePassword {
-		if opts.Username != "" && opts.Password != "" {
-			body.Add("username", opts.Username)
-			body.Add("password", opts.Password)
+		if opts.Username != nil && opts.Password != nil {
+			body.Add("username", *opts.Username)
+			body.Add("password", *opts.Password)
 		}
-		if opts.Totp != "" {
-			body.Add("totp", opts.Totp)
+		if opts.Totp != nil {
+			body.Add("totp", *opts.Totp)
 		}
 	}
 
@@ -153,7 +153,7 @@ func (client *KClient) IntrospectToken(token string) (*KIntrospectionResponse, b
 func (client *KClient) RefreshToken(accessToken string, refreshToken string) (*KToken, error) {
 	result, ok := client.IntrospectToken(accessToken)
 	if !ok {
-		token, err := client.GetOpenIDToken(KGrantTypeRefresh, &KTokenOpts{RefreshToken: refreshToken})
+		token, err := client.GetOpenIDToken(KGrantTypeRefresh, &KTokenOpts{RefreshToken: &refreshToken})
 		if err != nil {
 			return nil, err
 		}
@@ -164,7 +164,7 @@ func (client *KClient) RefreshToken(accessToken string, refreshToken string) (*K
 	return &KToken{
 		Type:    result.TokenType,
 		Access:  accessToken,
-		Refresh: refreshToken,
+		Refresh: &refreshToken,
 		Scope:   result.Scope,
 	}, nil
 }
