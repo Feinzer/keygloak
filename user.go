@@ -20,7 +20,7 @@ type KUserCredential struct {
 	Temporary bool   `json:"temporary"`
 }
 
-type KUserOpts struct {
+type KUserCreateOpts struct {
 	Email     string  `json:"email"`
 	Username  string  `json:"username"`
 	Password  string  `json:"password"`
@@ -38,10 +38,10 @@ type KUser struct {
 	Credentials []KUserCredential `json:"credentials"`
 }
 
-// Creates a new user inside the realm your set in your instance config.
+// Creates a new user inside the realm you set in your instance config.
 //
 // Client has to be previously authenticated using the Authenticate() method
-func (client *KClient) CreateUser(opts *KUserOpts) (*KUser, error) {
+func (client *KClient) CreateUser(opts *KUserCreateOpts) (*KUser, error) {
 	if opts.Password == "" {
 		return nil, fmt.Errorf("invalid password")
 	}
@@ -110,6 +110,98 @@ func (client *KClient) CreateUser(opts *KUserOpts) (*KUser, error) {
 	}
 
 	user.ID = path.Base(location.Path)
+
+	return user, nil
+}
+
+type KUserUpdateOpts struct {
+	Enabled   *bool   `json:"enabled"`
+	Email     *string `json:"email"`
+	Username  *string `json:"username"`
+	Password  *string `json:"password"`
+	FirstName *string `json:"firstName"`
+	LastName  *string `json:"lastName"`
+}
+
+// Updates the user inside the realm you set in your instance config.
+//
+// Client has to be previously authenticated using the Authenticate() method
+func (client *KClient) UpdateUser(token string, opts *KUserUpdateOpts) (*KUser, error) {
+	if client.ClientToken == nil {
+		return nil, fmt.Errorf("client has not been authenticated")
+	}
+
+	if _, ok := client.IntrospectToken(client.ClientToken.Access); !ok {
+		err := client.Authenticate(client.ClientID, client.ClientSecret)
+		if err != nil {
+			return nil, fmt.Errorf("client could not be re-authenticated")
+		}
+	}
+
+	userInfo, ok := client.UserInfo(token)
+	if !ok {
+		return nil, fmt.Errorf("invalid access token")
+	}
+
+	user := &KUser{}
+	if opts.Enabled != nil {
+		user.Enabled = *opts.Enabled
+	}
+	if opts.Email != nil {
+		user.Email = *opts.Email
+	}
+	if opts.Username != nil {
+		user.Username = *opts.Username
+	}
+	if opts.FirstName != nil {
+		user.FirstName = opts.FirstName
+	}
+	if opts.LastName != nil {
+		user.LastName = opts.LastName
+	}
+	if opts.Password != nil {
+		user.Credentials = []KUserCredential{
+			{
+				Type:      "password",
+				Value:     *opts.Password,
+				Temporary: false,
+			},
+		}
+	}
+
+	body, err := json.Marshal(user)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(
+		http.MethodPut,
+		fmt.Sprintf("%s/%s/%s", client.AdminURL, "users", userInfo.ID),
+		bytes.NewBuffer(body),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", client.ClientToken.Access))
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode >= 400 {
+		data, err := io.ReadAll(res.Body)
+		if err != nil {
+			return nil, fmt.Errorf("could not create user")
+		}
+
+		var userError KUserError
+		json.Unmarshal(data, &userError)
+		return nil, fmt.Errorf(userError.Message)
+	}
+
+	user.ID = userInfo.ID
 
 	return user, nil
 }
